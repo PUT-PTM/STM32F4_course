@@ -22,32 +22,31 @@ void lab01(void)
 
 	STM_STUDIO_variable = 0;
 
-	const unsigned int shortDelay = 2000000;
+	const unsigned int delay = 2000000;
 	unsigned int i;
-
     for(;;)
     {
     	GPIO_ResetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15);
     	GPIO_SetBits(GPIOD, GPIO_Pin_12);
-		for (i=0; i<shortDelay; ++i)
+		for (i=0; i<delay; ++i)
 		{
 			asm("nop");
 		}
 		GPIO_ResetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15);
 		GPIO_SetBits(GPIOD, GPIO_Pin_13);
-		for (i=0; i<shortDelay; ++i)
+		for (i=0; i<delay; ++i)
 		{
 			asm("nop");
 		}
 		GPIO_ResetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15);
 		GPIO_SetBits(GPIOD, GPIO_Pin_14);
-		for (i=0; i<shortDelay; ++i)
+		for (i=0; i<delay; ++i)
 		{
 			asm("nop");
 		}
 		GPIO_ResetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15);
 		GPIO_SetBits(GPIOD, GPIO_Pin_15);
-		for (i=0; i<shortDelay; ++i)
+		for (i=0; i<delay; ++i)
 		{
 			asm("nop");
 		}
