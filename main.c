@@ -1,5 +1,5 @@
 #include "labs.h"
-#include <math.h>
+#include "expansion_board/expansion_board.h"
 
 int main(void)
 {

@@ -55,6 +55,7 @@ void vExpansionBoardButton2Task(void* pvparameters);
 void vExpansionBoardButton3Task(void* pvparameters);
 void vExpansionBoardButton4Task(void* pvparameters);
 void vExpansionBoardRGBLedFader(void* pvparameters);
+void vExpansionBoardADCTask(void* pvparameters);
 void vExpansionBoardDACTask(void* pvparameters);
 void vExpansionBoardUSARTTask(void* pvparameters);
 void vExpansionBoardI2CTemperatureTask(void* pvparameters);
@@ -88,22 +89,23 @@ void EXPANSION_BOARD_test(void)
 	BUTTONS_init();
 
 	//xTaskCreate( vTestTask, ( signed char * ) "Test Task", 100, NULL, 1, NULL );
-	xTaskCreate( vMainBoardLedsTask, "Main board leds task", 100, NULL, 1, NULL );
-	xTaskCreate( vMainBoardButtonTask, "Main board button task", 100, NULL, 1, NULL );
+	xTaskCreate( vMainBoardLedsTask, "Main board leds task", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
+	xTaskCreate( vMainBoardButtonTask, "Main board button task", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
 
-	xTaskCreate( vExpansionBoardButton1Task, "Expansion board button1 task", 50, NULL, 1, NULL );
-	xTaskCreate( vExpansionBoardButton2Task, "Expansion board button2 task", 50, NULL, 1, NULL );
-	xTaskCreate( vExpansionBoardButton3Task, "Expansion board button3 task", 50, NULL, 1, NULL );
-	xTaskCreate( vExpansionBoardButton4Task, "Expansion board button4 task", 50, NULL, 1, NULL );
+	xTaskCreate( vExpansionBoardButton1Task, "Expansion board button1 task", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
+	xTaskCreate( vExpansionBoardButton2Task, "Expansion board button2 task", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
+	xTaskCreate( vExpansionBoardButton3Task, "Expansion board button3 task", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
+	xTaskCreate( vExpansionBoardButton4Task, "Expansion board button4 task", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
 
 	xTaskCreate( vExpansionBoardRGBLedFader, "RGB fader", 200, NULL, 1, NULL );
 
-	xTaskCreate( vExpansionBoardUSARTTask, "USART sender", 100, NULL, 1, NULL );
+	xTaskCreate( vExpansionBoardUSARTTask, "USART sender", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
 
-	xTaskCreate( vExpansionBoardI2CTemperatureTask, "I2C sensor", 100, NULL, 1, NULL );
+	xTaskCreate( vExpansionBoardI2CTemperatureTask, "I2C sensor", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
 
 
-	//xTaskCreate( vExpansionBoardDACTask, "DAC dma", 200, NULL, 1, NULL );
+	xTaskCreate( vExpansionBoardDACTask, "DAC dma", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
+	xTaskCreate( vExpansionBoardADCTask, "ADC dma", configMINIMAL_STACK_SIZE, NULL, 1, NULL );
 
 
     vTaskStartScheduler(); // This should never return.
@@ -435,7 +437,7 @@ void vMainBoardButtonTask(void* pvparameters)
 		if(userButtonState != Bit_RESET)
 		{
 			// wait a little to debounce
-			vTaskDelay(50 / portTICK_RATE_MS);
+			vTaskDelay(100 / portTICK_RATE_MS);
 			// check once again
 			uint8_t userButtonState = GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_0);
 			if(userButtonState != Bit_RESET)
@@ -477,6 +479,181 @@ void vExpansionBoardRGBLedFader(void* pvparameters)
 	}
 }
 
+void vExpansionBoardADCTask(void* pvparameters)
+{
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA , ENABLE);	// wejscie ADC
+
+	//inicjalizacja wejœcia ADC
+	GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_2;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);	//ADC
+
+	ADC_CommonInitTypeDef ADC_CommonInitStructure;
+	// niezale¿ny tryb pracy przetworników
+	ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;
+	// zegar g³ówny podzielony przez 2
+	ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div2;
+	// opcja istotna tylko dla tryby multi ADC
+	ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
+	// czas przerwy pomiêdzy kolejnymi konwersjami
+	ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;
+	ADC_CommonInit(&ADC_CommonInitStructure);
+
+	ADC_InitTypeDef ADC_InitStructure;
+	//ustawienie rozdzielczoœci przetwornika na maksymaln¹ (12 bitów)
+	ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
+	//wy³¹czenie trybu skanowania (odczytywaæ bêdziemy jedno wejœcie ADC
+	//w trybie skanowania automatycznie wykonywana jest konwersja na wielu //wejœciach/kana³ach)
+	ADC_InitStructure.ADC_ScanConvMode = DISABLE;
+	//w³¹czenie ci¹g³ego trybu pracy
+	ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
+	//wy³¹czenie zewnêtrznego wyzwalania
+	//konwersja mo¿e byæ wyzwalana timerem, stanem wejœcia itd. (szczegó³y w //dokumentacji)
+	ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;
+	ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
+	//wartoœæ binarna wyniku bêdzie podawana z wyrównaniem do prawej
+	//funkcja do odczytu stanu przetwornika ADC zwraca wartoœæ 16-bitow¹
+	//dla przyk³adu, wartoœæ 0xFF wyrównana w prawo to 0x00FF, w lewo 0x0FF0
+	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
+	//liczba konwersji równa 1, bo 1 kana³
+	ADC_InitStructure.ADC_NbrOfConversion = 1;
+	// zapisz wype³nion¹ strukturê do rejestrów przetwornika numer 1
+	ADC_Init(ADC1, &ADC_InitStructure);
+
+	// konfiguracja czasu próbkowania sygna³u
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_1, 1, ADC_SampleTime_84Cycles);
+
+	// uruchomienie modu³y ADC
+	ADC_Cmd(ADC1, ENABLE);
+
+	for(;;)
+	{
+		ADC_SoftwareStartConv(ADC1);
+		while(ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET)
+		{
+			asm("nop");
+		}
+		uint16_t valueFromADC = ADC_GetConversionValue(ADC1);
+
+		// valueFromADC - 12 bit - 0 - 4096
+		uint8_t newPeriod = (valueFromADC >> 2) + 1;
+
+		TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+		TIM_TimeBaseStructure.TIM_Prescaler = 21-1;
+		TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+		TIM_TimeBaseStructure.TIM_Period = newPeriod;
+		TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+		TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
+		TIM_TimeBaseInit(TIM6, &TIM_TimeBaseStructure);
+
+		vTaskDelay(100 / portTICK_RATE_MS);
+	}
+}
+
+volatile uint16_t valueFromADC;
+
+void vExpansionBoardADCDMATask(void* pvparameters)
+{
+	#define ADC_1_ADDRESS_BASE 0x40012000
+	// ADC_DR = ADC regular Data Register
+	#define ADC_DR_ADDRESS_OFFSET 0x4C
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA , ENABLE); // wejscie ADC
+	//inicjalizacja wejœcia ADC
+	GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_2;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+	ADC_CommonInitTypeDef ADC_CommonInitStructure;
+	// niezale¿ny tryb pracy przetworników
+	ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;
+	// zegar g³ówny podzielony przez 2
+	ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div2;
+	// opcja istotna tylko dla tryby multi ADC
+	ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
+	// czas przerwy pomiêdzy kolejnymi konwersjami
+	ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;
+	ADC_CommonInit(&ADC_CommonInitStructure);
+
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE); //ADC
+	ADC_InitTypeDef ADC_InitStructure;
+	//ustawienie rozdzielczoœci przetwornika na maksymaln¹ (12 bitów)
+	ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
+	//wy³¹czenie trybu skanowania (odczytywaæ bêdziemy jedno wejœcie ADC
+	//w trybie skanowania automatycznie wykonywana jest konwersja na wielu //wejœciach/kana³ach)
+	ADC_InitStructure.ADC_ScanConvMode = DISABLE;
+	//w³¹czenie ci¹g³ego trybu pracy
+	ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
+	//wy³¹czenie zewnêtrznego wyzwalania
+	//konwersja mo¿e byæ wyzwalana timerem, stanem wejœcia itd. (szczegó³y w //dokumentacji)
+	ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;
+	ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
+	//wartoœæ binarna wyniku bêdzie podawana z wyrównaniem do prawej
+	//funkcja do odczytu stanu przetwornika ADC zwraca wartoœæ 16-bitow¹
+	//dla przyk³adu, wartoœæ 0xFF wyrównana w prawo to 0x00FF, w lewo 0x0FF0
+	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
+	//liczba konwersji równa 1, bo 1 kana³
+	ADC_InitStructure.ADC_NbrOfConversion = 1;
+	// zapisz wype³nion¹ strukturê do rejestrów przetwornika numer 1
+	ADC_Init(ADC1, &ADC_InitStructure);
+
+	// konfiguracja czasu próbkowania sygna³u
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_1, 1, ADC_SampleTime_84Cycles);
+	// w³¹czenie wyzwalania DMA po ka¿dym zakoñczeniu konwersji
+	ADC_DMARequestAfterLastTransferCmd(ADC1, ENABLE);
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
+
+	DMA_InitTypeDef DMA_initStructure;
+	// wybór kana³u DMA
+	DMA_initStructure.DMA_Channel = DMA_Channel_0;
+	// ustalenie rodzaju transferu (memory2memory / peripheral2memory / memory2peripheral)
+	DMA_initStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
+	// tryb pracy - pojedynczy transfer b¹dŸ powtarzany
+	DMA_initStructure.DMA_Mode = DMA_Mode_Circular;
+	// ustalenie priorytetu danego kana³u DMA
+	DMA_initStructure.DMA_Priority = DMA_Priority_Medium;
+	// liczba danych do przes³ania
+	DMA_initStructure.DMA_BufferSize = (uint32_t)1;
+	// adres Ÿród³owy
+	DMA_initStructure.DMA_PeripheralBaseAddr = (uint32_t)(ADC_1_ADDRESS_BASE+ADC_DR_ADDRESS_OFFSET);
+	// adres docelowy
+	DMA_initStructure.DMA_Memory0BaseAddr = (uint32_t)&valueFromADC;
+	// okreslenie, czy adresy maj¹ byæ inkrementowane po ka¿dej przes³anej paczce danych
+	DMA_initStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
+	DMA_initStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+	// ustalenie rozmiaru przesy³anych danych
+	DMA_initStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+	DMA_initStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+	// ustalenie trybu pracy - jednorazwe przes³anie danych
+	DMA_initStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+	DMA_initStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
+	// wy³¹czenie kolejki FIFO (nie u¿ywana w tym przykadzie)
+	DMA_initStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
+	// wype³nianie wszystkich pól struktury jest niezbêdne w celu poprawnego dzia³ania, wpisanie jednej z dozwolonych wartosci
+	DMA_initStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;
+	// zapisanie wype³nionej struktury do rejestrów wybranego po³¹czenia DMA
+	DMA_Init(DMA2_Stream4, &DMA_initStructure);
+	// uruchomienie odpowiedniego po³¹czenia DMA
+	DMA_Cmd(DMA2_Stream4, ENABLE);
+
+	// w³¹czenie DMA dla ADC
+	ADC_DMACmd(ADC1, ENABLE);
+	// uruchomienie modu³y ADC
+	ADC_Cmd(ADC1, ENABLE);
+
+	for(;;)
+	{
+		vTaskDelay(1000 / portTICK_RATE_MS);
+	}
+}
+
 void vExpansionBoardDACTask(void* pvparameters)
 {
 	#define DAC_CHANNEL_1_ADDRESS_BASE 0x40007400
@@ -502,9 +679,9 @@ void vExpansionBoardDACTask(void* pvparameters)
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
 
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
-	TIM_TimeBaseStructure.TIM_Prescaler = 42-1;
+	TIM_TimeBaseStructure.TIM_Prescaler = 21-1;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseStructure.TIM_Period = 20;
+	TIM_TimeBaseStructure.TIM_Period = 400;
 	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
 	TIM_TimeBaseInit(TIM6, &TIM_TimeBaseStructure);
@@ -585,7 +762,7 @@ void vExpansionBoardButton1Task(void* pvparameters)
 		if(buttonState != Bit_SET)
 		{
 			// wait a little to debounce
-			vTaskDelay(50 / portTICK_RATE_MS);
+			vTaskDelay(100 / portTICK_RATE_MS);
 			// check once again
 			uint8_t buttonState = GPIO_ReadInputDataBit(GPIOE, GPIO_Pin_2);
 			if(buttonState != Bit_SET)
@@ -607,7 +784,7 @@ void vExpansionBoardButton2Task(void* pvparameters)
 		if(buttonState != Bit_SET)
 		{
 			// wait a little to debounce
-			vTaskDelay(50 / portTICK_RATE_MS);
+			vTaskDelay(100 / portTICK_RATE_MS);
 			// check once again
 			uint8_t buttonState = GPIO_ReadInputDataBit(GPIOE, GPIO_Pin_4);
 			if(buttonState != Bit_SET)
@@ -629,7 +806,7 @@ void vExpansionBoardButton3Task(void* pvparameters)
 		if(buttonState != Bit_SET)
 		{
 			// wait a little to debounce
-			vTaskDelay(50 / portTICK_RATE_MS);
+			vTaskDelay(100 / portTICK_RATE_MS);
 			// check once again
 			uint8_t buttonState = GPIO_ReadInputDataBit(GPIOE, GPIO_Pin_5);
 			if(buttonState != Bit_SET)
@@ -651,7 +828,7 @@ void vExpansionBoardButton4Task(void* pvparameters)
 		if(buttonState != Bit_SET)
 		{
 			// wait a little to debounce
-			vTaskDelay(50 / portTICK_RATE_MS);
+			vTaskDelay(100 / portTICK_RATE_MS);
 			// check once again
 			uint8_t buttonState = GPIO_ReadInputDataBit(GPIOE, GPIO_Pin_6);
 			if(buttonState != Bit_SET)
