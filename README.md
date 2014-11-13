@@ -6,6 +6,7 @@ Git repository for Basics of Microprocessors Technology course hosted by Institu
 ## Description
 
 The main file (main.c) allows to choose (by commenting/uncommenting appropriate functions) example code for each class (eg. lab01(); lab02();). Each function is wrapped in infinite loop so only one will be executed. All the instructions for classes can be found on Google Drive (only in Polish language):
+<br>
 https://drive.google.com/open?id=0B7GyMR8rCWn4OUJHOVZHYXhNZ2M&authuser=0
 
 In addition example code for testing expansion board is provided. It uses FreeRTOS operating system to test all the peripherals:
@@ -16,6 +17,8 @@ In addition example code for testing expansion board is provided. It uses FreeRT
  * i2c thermometer and serial port - sending the measured temperature through the serial port.
 
 Sample video with some functions shown can be seen:
+<br>
+https://www.youtube.com/watch?v=UjolNzCQiy4&feature=youtu.be
 
 ## How to compile the code
 
@@ -32,21 +35,27 @@ This project is created with free CooCox IDE and GNU Tools for ARM.
 ## Attributions
 
 FreeRTOS code based on:
+<br>
 https://github.com/hmph/FreeRTOS-template-for-STM32F4
 and following fork:
+<br>
 https://github.com/tocchi02/FreeRTOS-template-for-STM32F4
 
 My changes:
 Some clean-ups, added more task, some changes to FreeRTOSConfig.h - heap size was too low for more than just few simple tasks.
 
 I2C functions from:
+<br>
 http://eliaselectronics.com/
+<br>
 https://github.com/devthrash/STM32F4-examples
 
 Fading RGB based on:
+<br>
 http://www.instructables.com/id/Digispark-RGB-LED-Fader/step4/Arduino-Program/
 
 Details about STM32F4, FPU and CooCox:
+<br>
 http://virtual-shed.blogspot.com/2012/12/fpu-on-stm32f4-with-coocox_18.html
 
 ## License
