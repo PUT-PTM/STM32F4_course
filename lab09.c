@@ -1,98 +1,77 @@
 #include "stm32f4xx_conf.h"
 #include "stm32f4_discovery_lis302dl.h"
 
-int8_t accX = 5;
-int8_t accY = 55;
-int8_t accZ = -5;
-
 int lab09(void)
 {
 	SystemInit();
 
-	LIS302DL_InitTypeDef  LIS302DL_InitStruct;
-	/* Set configuration of LIS302DL*/
-	LIS302DL_InitStruct.Power_Mode = LIS302DL_LOWPOWERMODE_ACTIVE;
-	LIS302DL_InitStruct.Output_DataRate = LIS302DL_DATARATE_100;
-	LIS302DL_InitStruct.Axes_Enable = LIS302DL_X_ENABLE | LIS302DL_Y_ENABLE | LIS302DL_Z_ENABLE;
-	LIS302DL_InitStruct.Full_Scale = LIS302DL_FULLSCALE_2_3;
-	LIS302DL_InitStruct.Self_Test = LIS302DL_SELFTEST_NORMAL;
-	LIS302DL_Init(&LIS302DL_InitStruct);
+	/* Enable the SPI periph */
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
+	/* Enable SCK, MOSI and MISO GPIO clocks */
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+	/* Enable CS GPIO clock */
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
 
-	/* Required delay for the MEMS Accelerometer: Turn-on time = 3/Output data Rate = 3/100 = 30ms */
-	// TODO
-	uint16_t i;
-	for(i=0; i<10000; ++i)
-	{
-		uint16_t j;
-		for(j=0; j<1000; ++j)
-		{
-			asm("nop");
-		}
-	}
+	// SCK
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource13, GPIO_AF_SPI2);
+	// MISO
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource14, GPIO_AF_SPI2);
+	// MOSI
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource15, GPIO_AF_SPI2);
 
-	// WHO_AM_I (0Fh)
+	GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
+	/* SPI SCK pin configuration */
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-	int8_t przyspieszenie_x;
-	int8_t przyspieszenie_y;
-	int8_t przyspieszenie_z;
+	/* SPI MOSI pin configuration */
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_15;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+	/* SPI MISO pin configuration */
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_14;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+	/* Configure GPIO PIN for Lis Chip select */
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOE, &GPIO_InitStructure);
+
+	/* Deselect : Chip Select high */
+	GPIO_SetBits(GPIOE, GPIO_Pin_3);
+
+	/* SPI configuration -------------------------------------------------------*/
+	SPI_InitTypeDef SPI_InitStructure;
+	SPI_I2S_DeInit(SPI2);
+	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
+	SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
+	SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
+	SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
+	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
+	SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4;
+	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
+	SPI_InitStructure.SPI_CRCPolynomial = 7;
+	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
+	SPI_Init(SPI2, &SPI_InitStructure);
+
+	/* Enable SPI2 */
+	SPI_Cmd(SPI2, ENABLE);
+
+	SPI_I2S_SendData(SPI2, 0x3);
+	while(SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_TXE) == RESET);
+
+	uint16_t receive = SPI_I2S_ReceiveData(SPI2);
 
 	for(;;)
 	{
-		LIS302DL_Read(&przyspieszenie_x, LIS302DL_OUT_X_ADDR, 1);
-		LIS302DL_Read(&przyspieszenie_y, LIS302DL_OUT_Y_ADDR, 1);
-		LIS302DL_Read(&przyspieszenie_z, LIS302DL_OUT_Z_ADDR, 1);
 
-		LIS302DL_Read(&przyspieszenie_x, LIS302DL_OUT_X_ADDR, 1);
-		if(przyspieszenie_x>127)
-		{
-			przyspieszenie_x=przyspieszenie_x-1;
-			przyspieszenie_x=(~przyspieszenie_x)&0xFF;
-			przyspieszenie_x=-przyspieszenie_x;
-			accZ = -100;
-		}
-		LIS302DL_Read(&przyspieszenie_y, LIS302DL_OUT_Y_ADDR, 1);
-		if(przyspieszenie_y>127)
-		{
-			przyspieszenie_y=przyspieszenie_y-1;
-			przyspieszenie_y=(~przyspieszenie_y)&0xFF;
-			przyspieszenie_y=-przyspieszenie_y;
-			accZ = -100;
-		}
-		LIS302DL_Read(&przyspieszenie_z, LIS302DL_OUT_Z_ADDR, 1);
-		if(przyspieszenie_z>127)
-		{
-			przyspieszenie_z=przyspieszenie_z-1;
-			przyspieszenie_z=(~przyspieszenie_z)&0xFF;
-			przyspieszenie_z=-przyspieszenie_z;
-			accZ = -100;
-		}
-
-		accX = przyspieszenie_x;
-		accY = przyspieszenie_y;
-
-
-
-		/*
-		accX = przyspieszenie_x;
-		if(przyspieszenie_x > 127)
-		{
-			accY = -(~(przyspieszenie_x-1));
-		}
-		else
-		{
-			accY = przyspieszenie_x;
-		}
-
-		if(accX != accY)
-		{
-			accZ = 100;
-		}
-		else
-		{
-			accZ = 0;
-		}
-		*/
 
 	}
 

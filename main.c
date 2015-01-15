@@ -6,10 +6,11 @@ int main(void)
 	//lab01();
 	//lab02();
 	//lab08();
-	//lab09();
+	lab09();
+	//lab09_acc();
 
 	//lab10_P2M();
-	lab10_M2P();
+	//lab10_M2P();
 
 	//EXPANSION_BOARD_test();
 
