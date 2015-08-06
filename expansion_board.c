@@ -42,7 +42,7 @@
 
 // TEMP:
 // PB7 (I2C1_SDA)
-// PB8 (I2C1_SDL)
+// PB8 (I2C1_SCL)
 
 uint64_t u64IdleTicksCnt=0; // Counts when the OS has no task to execute.
 uint64_t tickTime=0;        // Counts OS ticks (default = 1000Hz).
