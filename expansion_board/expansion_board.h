@@ -1,0 +1,35 @@
+#ifndef _EXPANSION_BOARD_H_
+#define _EXPANSION_BOARD_H_
+
+// RGB LED:
+// PC6 (TIM3_CH1 / TIM8_CH1) - R
+// PC7 (TIM3_CH2 / TIM8_CH2) - used
+// PC8 (TIM3_CH3 / TIM8_CH3) - G
+// PC9 (TIM3_CH4 / TIM8_CH4) - B
+
+// LEDS:
+// PD0 - PD3
+
+// BUTTONS:
+// PE2, PE4-PE6
+
+// AMP:
+// PA4 (DAC1_OUT)
+
+// POT:
+// PA1 (ADC123_IN1)
+
+// SEN:
+// PA2 (ADC123_IN2)
+
+// USART:
+// PD8 (USART3_TX)
+// PD9 (USART3_RX)
+
+// TEMP:
+// PB7 (I2C1_SDA)
+// PB8 (I2C1_SDL)
+
+void EXPANSION_BOARD_test(void);
+
+#endif

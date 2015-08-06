@@ -14,7 +14,7 @@ typedef enum {	LED_number_mainBoard1 = 1, LED_number_mainBoard2 = 2, LED_number_
 					LED_number_RGB_R = 60, LED_number_RGB_G = 61, LED_number_RGB_B = 62
 				#endif
 
-}LED_number;
+} LED_number;
 
 void LED_init(void);
 void LED_turnOn(LED_number which);
